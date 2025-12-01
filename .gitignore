@@ -1,0 +1,44 @@
+# PyInstaller
+build/
+dist/
+*.spec
+!GeminiAutoRegister.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+logs/
+pip_install*.log
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Mac
+.DS_Store
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Screenshots and media
+screenshots/
+
+# Archives
+*.zip
+
+# Test coverage
+.coverage
+htmlcov/
