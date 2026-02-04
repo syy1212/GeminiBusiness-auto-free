@@ -96,6 +96,8 @@ class Language:
                 "chinese": "1. 中文",
                 "english": "2. English",
                 "language_selected": "已选择中文作为系统语言",
+                "invalid_option": "无效选项，请输入 1 或 2",
+                "enter_valid_number": "请输入有效数字",
                 
                 # System info
                 "current_operating_system": "当前操作系统: {system}",
@@ -208,6 +210,8 @@ class Language:
                 "chinese": "1. 中文",
                 "english": "2. English",
                 "language_selected": "English has been selected as the system language",
+                "invalid_option": "Invalid option, please enter 1 or 2",
+                "enter_valid_number": "Please enter a valid number",
                 
                 # System info
                 "current_operating_system": "Current operating system: {system}",

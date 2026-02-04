@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 import time
 import re
+import os
 from config import Config
 import requests
 import email
@@ -35,8 +36,7 @@ class EmailVerificationHandler:
 
         for attempt in range(max_retries):
             try:
-                logging.info(f"尝试获取验证码 (第 {attempt + 1}/{max_retries} 次)...")
-
+                print(f"正在尝试获取验证码 (第 {attempt + 1}/{max_retries} 次)...")
                 if not self.imap:
                     verify_code, first_id = self._get_latest_mail_code()
                     if verify_code is not None and first_id is not None:
@@ -50,14 +50,11 @@ class EmailVerificationHandler:
                     if verify_code is not None:
                         return verify_code
 
-                if attempt < max_retries - 1:  # 除了最后一次尝试，都等待
-                    logging.warning(f"未获取到验证码，{retry_interval} 秒后重试...")
+                if attempt < max_retries - 1:
                     time.sleep(retry_interval)
 
             except Exception as e:
-                logging.error(f"获取验证码失败: {e}")  # 记录更一般的异常
                 if attempt < max_retries - 1:
-                    logging.error(f"发生错误，{retry_interval} 秒后重试...")
                     time.sleep(retry_interval)
                 else:
                     raise Exception(f"获取验证码失败且已达最大重试次数: {e}") from e
@@ -72,7 +69,8 @@ class EmailVerificationHandler:
             raise Exception("获取验证码超时")
         try:
             # 连接到IMAP服务器
-            mail = imaplib.IMAP4_SSL(self.imap['imap_server'], self.imap['imap_port'])
+            imap_port = int(self.imap['imap_port'])
+            mail = imaplib.IMAP4_SSL(self.imap['imap_server'], imap_port)
             mail.login(self.imap['imap_user'], self.imap['imap_pass'])
             search_by_date=False
             # 针对网易系邮箱，imap登录后需要附带联系信息，且后续邮件搜索逻辑更改为获取当天的未读邮件
@@ -117,11 +115,9 @@ class EmailVerificationHandler:
                         mail.expunge()
                         mail.logout()
                         return code
-            # print("未找到验证码")
             mail.logout()
             return None
         except Exception as e:
-            print(f"发生错误: {e}")
             return None
 
     def _extract_imap_body(self, email_message):
@@ -136,7 +132,7 @@ class EmailVerificationHandler:
                         body = part.get_payload(decode=True).decode(charset, errors='ignore')
                         return body
                     except Exception as e:
-                        logging.error(f"解码邮件正文失败: {e}")
+                        pass
         else:
             content_type = email_message.get_content_type()
             if content_type == "text/plain":
@@ -145,7 +141,7 @@ class EmailVerificationHandler:
                     body = email_message.get_payload(decode=True).decode(charset, errors='ignore')
                     return body
                 except Exception as e:
-                    logging.error(f"解码邮件正文失败: {e}")
+                    pass
         return ""
 
     # 使用 POP3 获取邮件
@@ -204,13 +200,13 @@ class EmailVerificationHandler:
                         body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
                         return body
                     except Exception as e:
-                        logging.error(f"解码邮件正文失败: {e}")
+                        pass
         else:
             try:
                 body = email_message.get_payload(decode=True).decode('utf-8', errors='ignore')
                 return body
             except Exception as e:
-                logging.error(f"解码邮件正文失败: {e}")
+                pass
         return ""
 
     # 手动输入验证码
@@ -222,12 +218,12 @@ class EmailVerificationHandler:
         time.sleep(0.5)
         if not mail_list_data.get("result"):
             return None, None
-
+        
         # 获取最新邮件的ID
         first_id = mail_list_data.get("first_id")
         if not first_id:
             return None, None
-
+        
         # 获取具体邮件内容
         mail_detail_url = f"https://tempmail.plus/api/mails/{first_id}?email={self.username}{self.emailExtension}&epin={self.epin}"
         mail_detail_response = self.session.get(mail_detail_url)
@@ -235,18 +231,23 @@ class EmailVerificationHandler:
         time.sleep(0.5)
         if not mail_detail_data.get("result"):
             return None, None
-
+        
         # 从邮件文本中提取6位验证码（可能是数字、字母或混合）
         mail_text = mail_detail_data.get("text", "")
         mail_subject = mail_detail_data.get("subject", "")
-        logging.info(f"找到邮件主题: {mail_subject}")
+        
+        # 检查邮件主题，只处理验证码邮件
+        if "验证码" not in mail_subject and "verification" not in mail_subject.lower():
+            # 静默跳过欢迎邮件，不打印日志
+            self._cleanup_mail(first_id)
+            # 递归调用获取下一封邮件
+            return self._get_latest_mail_code()
         
         # 先尝试从邮件文本中移除邮箱地址，避免误匹配
         mail_text_clean = mail_text.replace(self.account, '')
         
         # 匹配6位字母数字组合验证码（纯数字、纯字母或混合）
         code_match = re.search(r'\b[A-Z0-9]{6}\b', mail_text_clean)
-
         if code_match:
             return code_match.group(), first_id
         return None, None
@@ -277,6 +278,24 @@ class EmailVerificationHandler:
 
 
 if __name__ == "__main__":
-    email_handler = EmailVerificationHandler()
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    temp_mail = os.getenv("TEMP_MAIL")
+    temp_ext = os.getenv("TEMP_MAIL_EXT", "")
+    imap_user = os.getenv("IMAP_USER")
+
+    account = None
+    if temp_mail and temp_mail != "null":
+        account = f"{temp_mail}{temp_ext}" if temp_ext else temp_mail
+    elif imap_user:
+        account = imap_user
+    else:
+        account = input("请输入要获取验证码的邮箱地址: ").strip()
+
+    if not account:
+        raise SystemExit("未提供邮箱地址")
+
+    email_handler = EmailVerificationHandler(account)
     code = email_handler.get_verification_code()
     print(code)

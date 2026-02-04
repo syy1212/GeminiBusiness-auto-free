@@ -7,10 +7,12 @@ def test_temp_mail():
     """测试临时邮箱方式"""
     # 生成测试邮箱地址
     import time
+    from config import Config
+    config = Config()
     test_account = f"test{int(time.time())}@{os.getenv('DOMAIN')}"
     handler = EmailVerificationHandler(test_account)
     print("\n=== 测试临时邮箱模式 ===")
-    print(f"临时邮箱: {os.getenv('TEMP_MAIL')}@mailto.plus")
+    print(f"临时邮箱: {config.get_temp_mail()}{config.get_temp_mail_ext()}")
     print(f"测试账号: {test_account}")
     code = handler.get_verification_code()
     if code:

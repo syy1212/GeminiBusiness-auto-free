@@ -4,7 +4,18 @@ import os
 import logging
 from dotenv import load_dotenv
 
-load_dotenv()
+def _load_env():
+    if getattr(sys, "frozen", False):
+        application_path = os.path.dirname(sys.executable)
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
+
+    dotenv_path = os.path.join(application_path, ".env")
+    if os.path.exists(dotenv_path):
+        load_dotenv(dotenv_path)
+
+
+_load_env()
 
 
 class BrowserManager:
@@ -36,7 +47,7 @@ class BrowserManager:
             co.set_user_agent(user_agent)
 
         co.headless(
-            os.getenv("BROWSER_HEADLESS", "True").lower() == "true"
+            os.getenv("BROWSER_HEADLESS", "false").lower() == "true"
         )  # 生产环境使用无头模式
 
         # Mac 系统特殊处理
@@ -54,4 +65,3 @@ class BrowserManager:
                 self.browser.quit()
             except:
                 pass
-

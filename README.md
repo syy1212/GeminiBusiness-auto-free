@@ -50,7 +50,7 @@ pip install -r requirements.txt
 
 | 配置项 | 说明 | 示例 |
 |--------|------|------|
-| `DOMAIN` | 邮箱域名 | `storm-brewing.shop` |
+| `DOMAIN` | 邮箱域名 | `your_domain.com` |
 | `TEMP_MAIL` | tempmail.plus 用户名<br/>（不使用则设为 `null`） | `your_username` 或 `null` |
 | `TEMP_MAIL_EPIN` | tempmail.plus 的 epin | `123456` |
 | `TEMP_MAIL_EXT` | 临时邮箱后缀 | `@mailto.plus` |
